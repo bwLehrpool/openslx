@@ -1,0 +1,6 @@
+- /var/adm/backup/rpmdb/*
+- /etc/*rpmnew
+- /etc/*rpmorig
+- *.rpmsave
+- *.rpmnew
+

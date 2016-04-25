@@ -1,0 +1,6 @@
+# To be sourced by /opt/openslx/scripts/pam_script_auth only
+
+# Stop the virtualization environment 
+systemctl stop nova-compute.service &
+systemctl stop libvirt-bin.service &
+systemctl stop neutron-plugin-openvswitch-agent.service &

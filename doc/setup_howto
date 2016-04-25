@@ -1,0 +1,271 @@
+This is a little howto to get people started on openSLX. Please expand!
+
+
+
+1. Client (template) prerequisites
+
+Hard disk space: As the tm-scripts directory will expand considerably while
+	building mini-linux (to 13-18 GB), we recommend to allocate around 20 GB
+	disk space. mltk will install some packages into the base system
+	depending on chosen modules.
+
+Currently supported distributions:
+	Ubuntu 12.04 LTS, Ubuntu 13.04, Ubuntu 13.10, openSuse 12.3., Ubuntu 14.04
+
+Net access is vital as packages / source will be downloaded from the internet
+while building. Please note that root privileges will be needed to run the
+scripts, as e.g. needed packages will be installed automatically.
+
+
+2. Source repositories
+
+openSLX main repository: git://git.openslx.org/openslx-ng/tm-scripts.git
+
+There are some other git repositories needed by the build process, but they
+will be automatically checked out, e.g. busybox or printergui.
+
+
+3. Deployment server prerequisites
+
+Needed services: dhcp, tftpd, httpd, NFS and/or dnbd3.
+
+
+4. Getting the source
+
+checkout openSLX git repository:
+# git clone git://git.openslx.org/openslx-ng/tm-scripts.git
+
+
+5. Getting started
+
+On your client machine that serves as the template for the final system:
+Change into directory tm-scripts, and execute the mltk script ('mini linux
+toolkit') without parameters (or use -h, --help) to see possible options
+including some examples.
+
+mltk will check for some essential basic development tools like gcc, make 
+etc. In case of missing development tools mltk will display information 
+| [info]     You appear to be missing following development tools.
+along with some installation hints about needed package(s) and suggests 
+needed packet manager invocations to remedy.
+
+mltk will write detailed log files to the directory 'logs' (stdout.log, 
+stderr.log). Detailed information can also be obtained using the '-d' 
+(debug) switch. If a kernel is being compiled '-d' will ask if some special 
+kernel options arise, if no value was being given through 'make oldconfig', 
+as without '-d' the system will assume the default answer is correct.
+
+6. Building
+
+Build Stage31:
+# ./mltk stage31 -c -b (-d -> debug when appropriate)
+
+... this will take quite some time, the first time mostly due to kernel compiling.
+
+Build Stage32:
+# ./mltk stage32 -c -b (-d )
+
+Build Stage32 for openSuse: (not really needed, should be identical to stage32)
+# ./mltk stage32-opensuse -c -b
+
+... this will take some time, mostly due to compiling a couple of packages.
+
+
+(Re)building a single module:
+# ./mltk stage32 -c [module] -b [module] (-d)
+
+Building a single module for openSuse:
+./mltk stage32-opensuse -c [module] [module] -b (-d)
+
+
+Build addons (vmware etc.)
+# ./mltk vmware -c -b
+# ./mltk vbox -c -b
+# ./mltk debug -c -b (as always: -d -> debug when appropriate)
+
+
+7. Packaging
+
+This should be done on the 'packaging server' which creates the files
+required for booting from the remote template machine from above.
+You can do this on the same machine you were building mini-linux on,
+but it might lead to problems when builsing stage 4 later.
+For this you need the openslx script from the tm-scripts repo, which
+also needs to be run as root (for proper rsync).
+
+Please note that the remote machine (the machine on which the build process
+ran) needs to export the build structure (option -n, see
+mltk --help). This option executes a bind mount of the local build directory
+to a standardized place, /export/build, which can be accessed later from the
+server machine via rsync. To facilitate this rsync-ing it may be wise to
+add the ssh key to the build machine (authorized_keys), as then no password
+has to be given when syncing from the server machine.
+
+So, remember to execute
+# ./mltk -n
+on the build machine once after bootup, as the build is usually going to
+by synchronized to a dedicated server machine for packing.
+
+
+7.1 Packaging locally (build and server machine are the same machine)
+
+Even though the usual way to go is using dedicated machines to build and to
+serve it is possible to package locally, e.g. for testing purposes. So, to
+package stages and addons (for example vmware), presuming the same machine
+is used for building and serving:
+# ./openslx local stage31 -e cpio
+# ./openslx local stage32 -e sqfs
+(Use this call for openSuse:)
+# ./openslx local stage32-opensuse -e sqfs (for target opensuse)
+
+Addons can be packed the same way:
+# ./openslx local vmware -e sqfs
+
+
+7.2 Remote packaging (needed if build and server machine not identical)
+
+First, do a
+# ./openslx <IP of build machine> -s
+
+to synchronize all stage/addon builds in one pass. This synchronizes the
+complete build directories from the remote (build) machine to the server.
+It is possible to synchronize several build machines (thus different
+flavours) to one server. The IP adresses of build machines are used in
+server directory structure to distinguish builds; therefore the option
+'local' should be used with care.
+
+The stages and addons may be packed in analogue to the 'local case'
+mentioned above:
+
+# ./openslx <IP of build machine> stage31 -e cpio
+# ./openslx <IP of build machine> stage32 -e sqfs
+
+Use this call for openSuse:
+# ./openslx <IP of build machine> stage32-opensuse -e sqfs
+
+Addons:
+# ./openslx <IP of build machine> vmware -e sqfs
+
+You can synchronize and pack at the same time
+# ./openslx <IP of build machine> stage31 -e cpio -s
+# [...]
+# ./openslx <IP of build machine> vmware -e sqfs -s
+
+
+8. Preparing for client boot
+
+As example we suppose the packaged boot images are expected in 
+[webroot]/boot/client. Of course the boot chain (or an (i)pxe-delivered boot 
+menu) needs to be pointed to this directory as well. It is possible to use 
+more than one directory when using a boot menu, by the way; different 
+directories just need to be represented by separate entries in the boot menu.
+
+The packaged stages, addons and the kernel will be found on the server machine 
+at .../tm-scripts/server/boot/[IP or local]/. For convenience it is recommended 
+to link these files, but they can also be copied to [webroot]/boot/client, of 
+course.
+
+So these links should be set:
+
+initramfs-stage31
+-> [path to tm-scripts]/server/boot/[IP or local]/initramfs-stage31
+
+kernel
+-> [path to tm-scripts]/server/boot/[IP or local]/kernel/kernel
+
+stage32.sqfs
+-> [path to tm-scripts]/server/boot/[IP or local]/stage32-opensuse.sqfs
+
+vmware.sqfs
+-> [path to tm-scripts]/server/boot/[IP or local]/vmware.sqfs
+... other addons likewise.
+
+
+9. Client configurations
+
+Two configuration files will be needed in the directory (following example 
+above): [webroot]/boot/client, both config and config.tgz.
+
+The config file will be used for client boot parameters, eg. which NFS share 
+will be used for storing VM images, proxy configurations, which addons are to 
+be used and the like. Please take note that the client machine root password 
+will be defined here. These parameters are documented in doc/boot_config_vars.
+
+The file config.tgz holds localization information for specific environments, 
+e.g. specific local authentification, home directories, shares and the like. 
+If there is no pre-formatted localization available it's perhaps a good 
+idea to just touch config.tgz or pack an empty archive of that name. 
+
+Example localizations may be listed at [path to tm-scripts]/server/configs.
+As with the stages, the configs are based on modules. That way you can easily
+link to existing modules and add own configuration modules to 
+[path to tm-scripts]/server/modules if needed.
+
+To automatically pack one of the configs under [path to tm-scripts]/server/configs 
+run the openslx script as follows:
+
+# ./openslx <IP of build machine> -k <config_name>
+
+An archive will be created under [path to tm-scripts]/server/boot/[IP or local]/config.tgz
+As mentioned above you can link or copy it into your webroot dir.
+
+
+10. iPXE: TODO
+
+Currently we use iPXE to deliver kernel and initramfs at boot time via HTTP.
+That is also the reason why kernel and initramfs are provided on a webroot instead of a 
+classical tftp directory. 
+
+iPXE can be downloaded here: http://ipxe.org/
+Download and compile the source as described on the homepage.  
+
+
+
+
+This will be most probably not being required in the future, as relevant 
+features are available in recent Syslinux versions (6.0.0+).
+
+
+11. Stage 4 (extract Linux desktop environment)
+
+The script clone_stage4 should not be used on a machine fulfilling only the 
+building part; it has to be executed on a machine with server function (which
+may be, of course, the same machine used for building). Anyway, to avoid
+further confusion about the modes 'remote' and 'server' and possible dysfunction 
+the script clone_stage4 rejects 'local' as IP parameter.
+
+To use Stage 4 a nfs export will be necessary, as later on the files of stage4 
+will be accessed client-side by nfs. Please keep in mind that 
+"./mltk -n" has to be executed on the build machine before cloning 
+Stage 4.
+
+Well, then do the cloning work:
+# ./scripts/clone_stage4 [IP of build machine] /path/to/your/nfs/share/stage4
+
+To use Stage 4 the clients need the nfs mount information. This is handled via 
+a configuration variable (please consult doc/boot_config_vars for a full 
+summary) called SLX_STAGE4.
+
+So now would be a good time to check (or re-check) your base config file in 
+the client directory you chose above (see 8. Preparing for client boot) 
+contains a line
+SLX_STAGE4=[IP of service computer]:/path/to/your/nfs/share/stage4
+
+You should see Stage 4 working after rebooting the client. The Stage 4 entries 
+should be placed above the list of virtual machines. 
+
+As a side note it stage4 should be usable without complete reboot, if a 
+re-login is done and
+# systemctl restart nfs-mount
+is being executed.
+
+
+12. Further reading
+
+Please read also:
+
+setup_localization	Setup howto for localization (location specifics)
+setup_dnbd3		Setup howto for dnbd3 server and clients
+boot_config_vars	Describes variables used while booting a client
+conf_file_vars		Variables used in module configuration files
+

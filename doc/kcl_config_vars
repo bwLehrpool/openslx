@@ -1,0 +1,28 @@
+Following variables can be used as KCL parameters at boot time:
+
+slxsrv=     - A list of openslx server
+slxbase=    - Base directory for resources, such as the config, config.tgz and addons
+
+For a splash screen during boot following commands have to be appended:
+vga=current - Sets the screen resolution 
+splash      - triggers the splash screen (module 'splash-openslx' must have been build)
+quiet       - don't display kernel messages
+
+For debug shells during stage31 set following option:
+debug={1..4}
+
+Level:
+4 - Debug shell before Network is up
+3 - Debug shell after Network is up and before Configuration is fetched
+2 - Debug shell after configuration has been fetched and before stage32 is mounted
+1 - Debug shell after stage32 mount and before switch_root
+
+Following a sample pxe-menu entry for a system:
+
+LABEL u1304x64
+    MENU LABEL Ubuntu 13.04 x64 Curitiba
+        KERNEL http://10.254.221.6/u1304x64/kernel
+        INITRD http://10.254.221.6/u1304x64/initramfs-stage31
+        APPEND slxsrv=10.254.221.6 slxbase=u1304x64 vga=current splash quiet
+        IPAPPEND 3
+

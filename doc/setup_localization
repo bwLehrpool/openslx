@@ -1,0 +1,86 @@
+Howto mltk localization system - config.tgz
+
+
+1. General aspects
+
+The localization system is divided into config modules analogue to mltk build 
+modules. For differentiation these modules do not use the 'remote' directory 
+hierarchy but are to be found in the 'server' directory hierarchy at 
+.../tm-scripts/server/modules.
+
+
+2. Naming convention
+
+Of course these modules, if being newly written, can be named at will, as 
+they will be included by links later on. Anyway we would recommend to follow 
+our established naming scheme to produce informative names.
+
+We recommend to use dual branched names connected by hyphens. First part of 
+the name should be the system part to be changed; the second part should 
+denominate the place/location the change applies to.
+
+For example a module changing PAM for the needs of the university of Freiburg 
+should be named pam-freiburg (as it is), or pam-uni_freiburg, or perhaps even 
+pam-uni_freiburg_rz.
+
+
+3. Module activation
+
+mltk expects different configurations (localizations) in the directory tree 
+at .../tm-scripts/server/configs/. The name of a subdirectory there will be 
+used as parameter for mltk to pack a local configuration later on.
+
+So let's use the configuration 'freiburg' as an example. As mentioned the 
+configuration directory would be .../tm-scripts/server/configs/freiburg. The 
+modules for that configuration reside in .../tm-scripts/server/modules. These 
+modules needed are, then, activated by links:
+branding-freiburg -> ../../modules/branding-freiburg/,
+cups-freiburg -> ../../modules/cups-freiburg/,
+pam-freiburg -> ../../modules/pam-freiburg/
+etc.
+
+
+4. Module internals
+
+As said the modules have their place at server/modules/[module name]. It is 
+compulsive to mirror the system directory structure exactly. If, for example, 
+the module pam-freiburg of configuration freiburg includes a file ldap.conf, 
+this file must be placed at 
+.../tm-scripts/server/modules/freiburg/pam-freiburg/etc/ldap.conf. 
+
+
+5. About Packaging / Packing
+
+The directories linked as mentioned above will be archived directory by 
+directory using tar and gzip (.tgz). The single archives will be merged 
+using tar's append function. 
+It is important to note that, if a file occurs more than once or otherwise 
+conflicts, mltk will output a warning and then terminate.
+
+
+6. Usage
+
+A given IP adress is used for determining the placing of an archive, as IP 
+adresses are reflected in directory structure (see doc/setup_howto for 
+examples). 
+
+By the way, [config-name] is the name of the configuration directory located 
+in .../tm-scripts/server/configs/, to be entered without preceding path. 
+
+So executing
+# ./mltk server [IP-Adress or 'local'] -k [config-name]
+will yield a config.tgz placed in 
+.../tm-scripts/server/boot/[IP/local]/configs/[dirname]/config.tgz.
+
+This config.tgz file should be copied to or linked in the appropriate boot 
+web server directory.
+
+
+7. Caveat
+
+Is it important to keep in mind that 
+- exactly the same paths as in the system are used in config module folders,
+  so no usage of data directories or the like is allowed, and, 
+- if a file appears in the system, e.g. in Stage 3.2, it will be overwritten 
+  at boot time by a file having the same name and path file from config.tgz.
+

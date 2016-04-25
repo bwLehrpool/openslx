@@ -1,0 +1,98 @@
+Directory of variables used in module conf- and build files.
+
+Please expand and keep up to date!
+
+
+These main variables will be used by remote/setup_target directly. They
+can therefore be used directly without further build script logic.
+Note: REQUIRED_BINARIES and REQUIRED_FILES will only be searched for in the
+module's own build directory!
+
+REQUIRED_BINARIES		List of binaries to copy
+REQUIRED_FILES			List of regular files to copy
+REQUIRED_DIRECTORIES		List of directories to copy
+REQUIRED_SYSTEM_FILES		Files to be copied directly from the system
+REQUIRED_INSTALLED_PACKAGES	List of packages needed at build-time
+REQUIRED_CONTENT_PACKAGES	List of packages where the contents are to be
+				copied
+REQUIRED_LIBRARIES              Gathers required libraries. Note: These will
+				only be searched below module build directory.
+				Used in beamergui, consolekit, kdm, kernel, pam,
+				polkit, sshd, vbox, xorg.
+REQUIRED_MODULES		Denotes module dependencies: Modules which need
+				to be built before building a module.
+				Used in dnbd3, ldm-gtk-greeter.
+
+
+These main variables will be used by a helper script. They therefore do not need
+specialized build script logic.
+
+REQUIRED_LDD_BLACKLIST		Blacklist to not search for unwanted libraries,
+				evaluated by binutil.inc.
+				Used by kdm and vbox configuration.
+REQUIRED_PACKET_FILES_BLACKLIST	Blacklist to exclude files from listed package files,
+				eg. in case a rpm declares a file, but not extract it.
+				Note: Several entries needed to be separated by "\|"!
+				Used by samba.
+
+
+These variables take middle ground: They are neither used by helper script nor
+remote/setup_target. They do need to be called in build scripts in some sense, e.g.
+as parameter for configure when compiling.
+
+REQUIRED_PREFIX			Used to deliver wanted prefix-option to
+				'configure' script for compiling some source.
+
+
+Locally used variables, using extended build scripts. These vars need own build
+script logic to word, but may be globalized some day:
+
+REQUIRED_GIT			Required git URL for source download via git.
+				Used in beamergui, busybox, dnbd3, printergui,
+				Redsocks, vmchooser.
+REQUIRED_BRANCH			Required branch for source version via git.
+				Used in busybox.
+REQUIRED_COMMIT			Denoted a needed git commit by hash.
+				Used in dnbd3.
+REQUIRED_DIR_STRUCT		Root of directory structures directly needed from system.
+				Used in polkit configuration for ubuntu/debian.
+REQUIRED_DISABLED_SERVICES	List of systemd services to disable specifically.
+				Used in systemd configuration.
+REQUIRED_DOWNLOAD_BASE		Base url for downloading package.
+				Used in vmware configuration.
+REQUIRED_LIBKMOD_URL		Base URL and version for libkmod compilation.
+REQUIRED_LIBKMOD_VERSION	Used in systemd configuration.
+REQUIRED_PAM_SCRIPT_URL		Denotes needed pam URL, depends on
+				REQUIRED_PAM_SCRIPT_VERSION.
+				Used in pam.
+REQUIRED_PAM_SCRIPT_VERSION	Denotes needed pam Version.
+				Used in pam.
+REQUIRED_REVISION		Denoted a needed git commit by hash.
+				Used in redsocks. Seems to be the same as
+				REQUIRED_COMMIT; these will be standardized later.
+REQUIRED_TYPE			Denotes either vmware-workstation or vmware-player
+				in download URL construction.
+				Used in vmware.
+REQUIRED_URL			Denotes URL of some package to be downloaded. This
+				variable name should be used for this purpose.
+				Used in systemd, plymouth.
+REQUIRED_VBOXBASEURL		Denotes URL of virtual box base package (not
+				Expansion Pack).
+				Used in vbox.
+REQUIRED_VBOXEXTURL		Denotes URL of virtual box Expansion Pack package
+				Used in vbox.
+REQUIRED_VERSION		Denotes version number of some package, mostly
+				used as part of a download URL. Thise variable
+				name should be used by standard.
+				Used in plymouth, systemd.
+
+
+These variables are only used in the unsuccessful configurations for Scientific
+Linux, mostly (version) dependencies for systemd. They denote source URLS and
+needed versions for systemd necessities, which were not versionally met by
+Scientific Linux.
+
+REQUIRED_AUTOCONF_URL, REQUIRED_AUTOCONF_VERSION, REQUIRED_AUTOMAKE_URL,
+REQUIRED_AUTOMAKE_VERSION, REQUIRED_DBUS_VERSION, REQUIRED_DBUS_URL,
+REQUIRED_M4_URL, REQUIRED_M4_VERSION, REQUIRED_UTILLINUX_URL,
+REQUIRED_UTILLINUX_VERSION

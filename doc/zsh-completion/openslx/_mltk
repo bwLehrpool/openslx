@@ -1,0 +1,44 @@
+#compdef mltk
+#autoload
+
+typeset -A opt_args
+local context state state_descr line expl
+
+_mltk_target_modules() {
+	target_modules=(`ls remote/targets/$1`)
+}
+
+local -a _targets target_modules export_dirs
+_targets=(`ls remote/targets`)
+
+[ -d "/export" ] && export_dirs=(`ls /export`)
+
+_arguments \
+	"--help[display help text]: :->help" \
+	"(: -)-n[-n \[name\] bind mount all the local builds (remote/builds) to /export/builds or /export/\[name\]]:Existing folders in /export:($export_dirs)" \
+	"*:: :->target" && return 0
+
+if (( CURRENT == 1 )); then
+	_describe -t commands "mltk Targets" _targets
+	return
+fi
+
+case "$state" in
+	target)
+		_mltk_target_modules $words[1]
+		_arguments \
+			"-c[-c \[module\]* clean build directory of module(s) and target dir]:*: :->modules" \
+			"-b[-b \[module\]* build module(s) and copy them to the target build directory]:*: :->modules" \
+			"-d[activates debug output for the task (spamy)]" \
+			&& return 0
+
+
+		if [[ "$state" == modules ]]; then
+			_arguments \
+				"-c[-c \[module\]* clean build directory of module(s) and target dir]" \
+				"-b[-b \[module\]* build module(s) and copy them to the target build directory]" \
+				"-d[activates debug output for the task (spamy)]: :->debug" \
+				"*:Modules in Target $words[1]:($target_modules)" && return 0
+		fi
+	;;
+esac

@@ -1,0 +1,72 @@
+# Always include ldconfig/cache of full system:
++ /etc/ld.so.**
+- /boot/
+- /cdrom/
+- /dev/
+- /lib/modules/
+- /lost+found/
+- /media/
+- /mnt/
+- /opt/openslx/
+- /proc/
+- /run/
+- /srv/
+- /sys/
+- /tmp/
+- /usr/src/
+- /var/log/
+- /var/run
+- /var/www/
+- /var/tmp/
++ /var/cache/**/
+- /var/cache/**
+- /var/lock
++ /var/spool/**/
+- /var/spool/**
+- /etc/resolv.conf
+- /etc/resolvconf/
+- /etc/mtab
+- /etc/mtab.*
+- **/tm-scripts/
+- /initrd.img
+- /initrd.img.old
+- /vmlinuz
+- /vmlinuz.old
+# Interfering binaries/links
+- /sbin/shutdown
+- /sbin/reboot
+- /sbin/poweroff
+- /sbin/halt
+- /bin/sh
+# This is where the bind-mount of mltk resides...
+- /export/
+# Stuff from /etc we should include in stage 3.2
+- /etc/group-
+- /etc/gshadow
+- /etc/gshadow-
+- /etc/passwd-
+- /etc/shadow-
+- /etc/environment
+- /etc/fstab
+- /etc/group
+- /etc/hostname
+- /etc/hosts
+- /etc/inputrc
+- /etc/issue.net
+- /etc/localtime
+- /etc/login.defs
+- /etc/netconfig
+- /etc/networks
+- /etc/nscd.conf
+- /etc/nsswitch.conf
+- /etc/pam.conf
+- /etc/passwd
+- /etc/profile
+- /etc/protocols
+- /etc/rsyslog.conf
+- /etc/securetty
+- /etc/services
+- /etc/shadow
+# Modprobe.d stuff would be too late if added in stage 4, so put it in stage 3.2
+- /etc/modprobe.d
+

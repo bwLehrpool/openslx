@@ -1,0 +1,25 @@
+- /home
+- /root
+- /usr/src
+- /etc/init.d
+- /etc/init
+- /etc/cups
+- /var/lib/init.d
+- /usr/share/upstart
+- /lib/systemd
+- /usr/lib/systemd
+- /usr/lib/systemd/**
+- /etc/systemd
+- /var/lib/NetworkManager
+# blacklist busybox from system, to force the use of our own
+- /bin/busybox
+- /sbin/busybox
+- /usr/bin/busybox
+- /usr/sbin/busybox
+- /usr/local/bin/busybox
+- /usr/local/sbin/busybox
+# MOTD updater (tty/ssh login) pretty annoying as it tells you about available updates on ubuntu etc.
+- /etc/update-motd.d/**
+# Backups don't make sense
+- /var/backups/**
+

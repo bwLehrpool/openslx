@@ -1,0 +1,14 @@
+- /etc/crontab
+- /usr/sbin/cron
+- /usr/sbin/crontab
+- /usr/bin/cron
+- /usr/bin/crontab
+- /sbin/cron
+- /sbin/crontab
+- /bin/cron
+- /bin/crontab
+- /etc/crontab
+- /etc/cron.hourly
+- /etc/cron.daily
+- /etc/cron.weekly
+

@@ -1,0 +1,167 @@
+1. Printing concept
+
+--------------------------------------------------------------------------------
+|  @ VM                                                                        |
+|  MS Publish Color Printer prints job                                         |
+--------------------------------------------------------------------------------
+|
+| LPDP (unprivileged port)
+v
+--------------------------------------------------------------------------------
+| @ mltk                                                                       |
+| tcpsvd | lpd | printergui -> CUPS backend                                    |
+--------------------------------------------------------------------------------
+|
+| IPP :631 / LPDP :515
+v
+--------------------------------------------------------------------------------
+| @ Printer@Printserver                                                        |
+--------------------------------------------------------------------------------
+|
+v
+--------------------------------------------------------------------------------
+| Printer                                                                      |
+--------------------------------------------------------------------------------
+
+    User prints from virtual machine using MS Publish Color Printer. MS Publish
+    Color Printer converts the document to postscript and delivers it to
+    standard LPDP-Port 515.
+
+    Data traffic gets rerouted by Minilinux kernel to an unprivileged port.
+    tcpsvd listens on <IP>:<PORT> and transfers the input to lpd.
+
+    lpd now saves this file, sets parameters as shell variable and starts a
+    helper program. This helper program is a GUI applikation which offers
+    miscellaneous options to the user.
+
+    After user confirmation printergui delivers the print job to the local cups
+    server. From here the job gets handled by standard Common Unix Printing
+    System services.
+
+
+2. Implementation in Virtual Machines
+
+In virtual (windows) machines the generic printer "MS Publish Color Printer"
+will be used to deliver a print job after conversion to to postscrip to the
+Linux host.
+
+Setup in Windows:
+
+Win8: (TODO: elaborate further / english messages)
+    add orinter
+    Der gesuchte Drucker ist nicht aufgeführt]
+    Lokaler Drucker oder Netzwerkdrucker nicht aufgeführt]
+    Vorhandener Anschluss : LPD
+    Generic] [MS Publish Color Printer
+
+Win7: (TODO: elaborate further / english messages)
+    Startmenü, Geräte und Drucker
+    Drucker hinzufügen
+    Einen Netzwerk, Drahtlos oder Bluetoothdrucker hinzufügen
+    Suche beenden und Der gesuchte Drucker ist nicht aufgeführt
+    Drucker unter Verwendung einer TCP/IP-Adresse oder eines Hostnamens
+        hinzufügen, Weiter
+    Gerätetyp: TCP/IP Gerät, IP-Adresse 192.168.101.1, Haken weg bei
+        Treiberautomatik, Weiter.
+    Kaffee holen auf Windoof warten.
+    Benutzerdefiniert, Einstellungen
+    Protokoll : LPR, Warteschlangenname: STANDARD, LPR-Bytezählung aktivieren,
+        "OK".
+    Weiter
+    Hersteller: Generic, Drucker: MS Publisher Color Printer, Weiter.
+    (Empfohlener Treiber) Weiter
+    (Druckername) Weiter
+    Fertig stellen
+
+WinXP: (TODO elaborate further / english messages)
+
+
+3. Implementation in Linux host
+
+Redirecting: Redirecting is done by Linux kernel, or to be specific,
+by iptables:.
+
+iptables -A INPUT -i br0 -p tcp --dport 515 -j DROP
+iptables -A INPUT -i br0 -p tcp --dport 5515 -j DROP
+iptables -t nat -A PREROUTING -p tcp --dport 515 -j REDIRECT --to-port 5515
+
+
+4. Local spooler
+
+Local spooler is an unix lpd provided by busybox. It gets it's input on
+stdin from TCP/IP service daemon tcpsvd. tcpsvd listens on an unprivileged port
+to incoming data and passes them to lpd. In case of an incoming print job the
+file will be deposited in <spooldir>, meta data will be stored in shell
+variables and <helperprogram> be started. At this parameters gan be given. To
+facilitate printing a directory needs to be created in <spooldir> using the
+same name as the desired printing queue:
+
+busybox tcpsvd -E 0.0.0.0 5515 busybox lpd <spooldir> sh -c "<helperprogram>" &
+
+For better understanding a snippet from source file lpd.c should be helpful:
+
+ * A typical usage of BB lpd looks as follows:
+ * # tcpsvd -E 0 515 lpd [SPOOLDIR] [HELPER-PROG [ARGS...]]
+ * This starts TCP listener on port 515 (default for LP protocol).
+ * When a client connection is made (via lpr) lpd first changes its
+ * working directory to SPOOLDIR (current dir is the default).
+ [...]
+ * If HELPER-PROG (with optional arguments) is specified then lpd continues
+ * to process client data:
+ *      1. it reads and parses control file (cfA...). The parse process
+ *      results in setting environment variables whose values were passed
+ *      in control file; when parsing is complete, lpd deletes control file.
+ *      2. it spawns specified helper application. It is then
+ *      the helper application who is responsible for both actual printing
+ *      and deleting of processed data file.
+ *
+ * A good lpr passes control files which when parsed provides the following
+ * variables:
+ * $H = host which issues the job
+ * $P = user who prints
+ * $C = class of printing (what is printed on banner page)
+ * $J = the name of the job
+ * $L = print banner page
+ * $M = the user to whom a mail should be sent if a problem occurs
+ *
+ * We specifically filter out and NOT provide:
+ * $l = name of datafile ("dfAxxx") - file whose content are to be printed
+ *
+ * lpd provides $DATAFILE instead - the ACTUAL name
+ * of the datafile under which it was saved.
+ * $l would be not reliable (you would be at mercy of remote peer).
+ *
+ * Thus, a typical helper can be something like this:
+ * #!/bin/sh
+ * cat ./"$DATAFILE" >/dev/lp0
+ * mv -f ./"$DATAFILE" save/
+
+
+5. GUI / Custom CUPS Frontend
+
+As said in chapter 4, Local Spooler, a helper program is needed for further
+print job processing. Therefore a Qt-GUI application was developed (source
+avaiulable at http://git.openslx.org/printergui.git/). This application
+communicates with a local CUPS by CUPS-API, facilitated by libcups2.
+
+The application offers configurated printers and several print options
+supported by the chosen printer. After obtaining user confirmation the
+print job and given options will be given to CUPS for further processing.
+The application expects an user name as first parameter, and the file to be
+printed as second parameter (see chapter 4, Local Spooler).
+
+
+5. Local CUPS (to be elaborated further)
+
+A standard CUPS can be used. A minimal setup needs these files:
+    /usr/sbin/cupsd
+    /etc/cups/cupsd.conf
+    /usr/lib/cups/
+    /usr/share/cups/
+
+Needed configuration files:
+    /etc/cups/ppd/*
+    /etc/cups/printers.conf
+
+
+(Original: https://lab.ks.uni-freiburg.de/projects/rzpools/wiki/_Drucken_)

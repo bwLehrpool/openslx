@@ -1,0 +1,20 @@
+In case you want to have proper syntax highlighting:
+
+
+For mltk module files, in .vimrc:
+au BufRead,BufNewFile *.build set filetype=sh
+au BufRead,BufNewFile *.conf set filetype=sh
+au BufRead,BufNewFile *.conf.* set filetype=sh
+au BufRead,BufNewFile *.inc set filetype=sh
+au BufRead,BufNewFile *.include set filetype=sh
+
+
+For #!/bin/ash in scripts, create .vim/scripts.vim:
+if did_filetype()
+	finish
+endif
+
+if getline(1) =~# '^#!.*/ash'
+	setf sh
+endif
+

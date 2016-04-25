@@ -1,0 +1,66 @@
+Summary of variables in the boot 'config' file
+
+The variables follow the form as VAR='value'.
+Remember to set all variables in inverted commata: '...'!
+
+NFS-share related variables:
+SLX_VM_NFS	FQDN/IP:share name for VM image share.
+		Example: some-store.here.example.tld:vmware/images/store
+SLX_STAGE4	FQDN/IP:share name for stage 4 storage (nfs):
+		Example: 10.20.30.40:/srv/suse/stage4
+            or dnbd3 syntax:
+		Example: dnbd3 stage4/default/ubuntu1304.sqfs
+SLX_STAGE4_RID    Use specific revision of stage 4. Only used when
+                  using dnbd3 for stage 4.
+
+Proxy server related variables:
+SLX_PROXY_MODE		Proxy mode, e.g. 'auto'.
+SLX_PROXY_IP		Proxy server IP.
+SLX_PROXY_PORT		Proxy server port, standard would be 8080.
+SLX_PROXY_TYPE		Proxy type, eg. 'http-connect'.
+SLX_PROXY_BLACKLIST	Proxy blacklist netmask, e.g. '10.20.30.40/16'.
+			Sites in this IP range will not be proxied.
+
+Time server variables:
+SLX_NTP_SERVER		Time server FQDN or IP.
+SLX_BIOS_CLOCK		BIOS clock type, e.g. 'local'.
+
+Domain related variables:
+SLX_NET_DOMAIN		Network domain, e.g. 'here.there.example.tld'.
+
+Configuration server variables:
+SLX_CONFIG_SERVERS	IP of configuration server
+
+Addon related variables:
+SLX_ADDONS		Space separated list of sqfs-modules to load.
+			Example: 'vmware vbox debug'.
+
+VMWare related variables:
+SLX_VMWARE_3D  Boolean, sets 'mks.gl.allowBlacklistedDrivers'
+
+Client root password related variables:
+SLX_ROOT_PASS		Expects a (salted) sha-512 password hash.
+			Such hashes can be created using "mkpasswd -m sha-512".
+
+dnbd3 related:
+SLX_DNBD3_SERVERS        Space separated list of dnbd3 servers, eg. '1.2.3.4 5.6.7.8'
+		The list will be randomized on use.
+SLX_DNBD3_PRIO_SERVERS   Space separated list of preferred dnbd3 servers
+		The list will not be randomized and is used before the regular list.
+
+remote logging:
+SLX_REMOTE_LOG       URL where to post log to, eg. 'http://server/log.php'
+	POST variables: type, description, longdesc
+
+user-specific shares (the 'n' in the variable name is a numerical (!) identifier for the share):
+SLX_SHARE_n_PATH         Network path to the share, e.g. //cifs.server/sharename
+SLX_SHARE_n_AUTH_TYPE    Type of authentication. Type 'guest' means no authentication 
+	is required for mounting the share. Type 'pam' means to use the same credentials as the
+	user logging in. Type 'user' means the credentials defined by SLX_SHARE_n_AUTH_USER and
+SLX_SHARE_n_AUTH_PASS will be used. This option is mandatory.
+SLX_SHARE_n_AUTH_USER    Only required if SLX_SHARE_n_AUTH_TYPE is 'user'. Defines the
+	username to use for authenticating the mount of the share.
+SLX_SHARE_n_AUTH_PASS    Only required if SLX_SHARE_n_AUTH_TYPE is 'user'. Defines the
+	password to use for authenticating the mount of the share.
+SLX_SHARE_n_PERM         Permissions for the share. Supports 'rw' and 'ro'. Defaults to 'ro'.
+

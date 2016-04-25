@@ -1,0 +1,12 @@
+- /usr/share/xsessions/*
++ /usr/share/xsessions/ubuntu.desktop
++ /usr/share/xsessions/xfce.desktop
+
++ /usr/share/xsessions/gnome.desktop
++ /usr/share/xsessions/deepin.desktop
+
++ /usr/share/xsessions/i3.desktop
+
+# gnome-session-fallback for the good ol' gnome2 session
++ /usr/share/xsessions/gnome-fallback.desktop
++ /usr/share/xsessions/kde-plasma.desktop

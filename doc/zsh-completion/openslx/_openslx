@@ -1,0 +1,45 @@
+#compdef openslx
+#autoload
+
+typeset -A opt_args
+local context state state_descr line expl
+
+_openslx_targets() {
+	targets=(`ls server/local_builds/$1`)
+}
+
+local -a targets _local_builds configs
+_local_builds=(`ls server/local_builds/`)
+configs=(`ls server/configs/`)
+
+_arguments \
+	"--help[display help text]: :->help" \
+	"*:: :->remotehost" && return 0
+
+if (( CURRENT == 1 )); then
+	_describe -t commands "Existing Remote Hosts" _local_builds
+	return
+fi
+
+case "$state" in
+	remotehost)
+		_openslx_targets $words[1]
+		[[ "$targets" == "server/local_builds/local" ]] && unset targets
+
+		_arguments \
+			"(-k :)-s[sync 'builds' from remote host]" \
+			"(-s :)-k[-k <config> - generate config file server/boot/<remotehost>/configs/<configname>/config.tgz]:Available Configs:($configs)" \
+			"(:)-d[activates debug output for the task (spamy)]" \
+			"(-)*: :->target" \
+			&& return 0
+
+			if [[ "$state" == target ]]; then
+				_arguments \
+					"-e[-e type - export target as 'type'. can be 'cpio' (simple initramfs) or 'sqfs' (squashfs)]:Export Type:(sqfs cpio)" \
+					"-s[sync 'builds' from remote host]" \
+					"-c[clean target in server/local_builds/ and corresponding files under boot/]" \
+					"-d[activates debug output for the task]" \
+					":Targets on Host $words[1]:($targets)"
+			fi
+	;;
+esac

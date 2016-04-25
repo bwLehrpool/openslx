@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+#	Helper script to generate a stage4 export
+#	for a remote machine per rsync.
+#
+
+SELF="$(readlink -f $0)"
+SCRIPTS_DIR="$(dirname "${SELF}")"
+ROOT_DIR="${SCRIPTS_DIR%/*}"
+
+. "${ROOT_DIR}/core/includes/helper/logging.inc"
+
+MLTK_PID="$$"
+
+qnd_exit() {
+	unset_quiet
+	kill "$MLTK_PID"
+	[ $# -ge 1 ] && kill "$REMOTE_HOST"
+}
+
+[ $# -ne 2 ] && perror "$0 <remote_ip> <target_dir> (-- Hint: <stage_to_exclude> is gone now, only two parameters are needed)"
+[ "$REMOTE_HOST" = "local" ] && perror 'It is not wise to use "local" as remote IP.'
+
+REMOTE_HOST="$1"
+BOOT_DIR="${ROOT_DIR}/var/boot/$REMOTE_HOST"
+TARGET_DIR="$2"
+mkdir -p "$TARGET_DIR"
+mkdir -p "$BOOT_DIR"
+mkdir -p "$BOOT_DIR/logs"
+
+EXCLUDE="$BOOT_DIR/exclude-stage4"
+INCLUDE="$BOOT_DIR/include-stage4"
+
+pinfo "Building rsync exclude-file for building stage 4...."
+echo "## Exclude file for stage4 of $REMOTE_HOST" > "$EXCLUDE"
+echo "## Include file for stage4 of $REMOTE_HOST" > "$INCLUDE"
+for FILE in $(find "$ROOT_DIR"/core/blacklists/*/ -type f); do
+	echo "## From $FILE" >> "$EXCLUDE"
+	echo "## From $FILE" >> "$INCLUDE"
+	grep '^-' "$FILE" >> "$EXCLUDE"
+	grep '^+' "$FILE" >> "$INCLUDE"
+done
+
+pinfo "Done."
+[ "y$UID" == "y0" ] || perror "You're not root. Cannot continue with rsync."
+
+# prepare rsync's options depending on whether the source is local or remote
+RSYNC_OPTS=""
+RSYNC_SOURCE=""
+RSYNC_LOG="${BOOT_DIR}/logs/clone-stage4.$(date +%Y%m%d%H%M%S).log"
+if [[ "$REMOTE_HOST" == "local" ]]; then
+	RSYNC_SOURCE="/"
+else
+	RSYNC_SOURCE="root@$REMOTE_HOST:/"
+	RSYNC_OPTS="-e ssh -oStrictHostKeyChecking=no"
+fi
+
+pinfo "Cloning via rsync"
+cat "$INCLUDE" "$EXCLUDE" | rsync -a --delete --delete-excluded --numeric-ids -v --exclude-from=- "${RSYNC_OPTS}" "${RSYNC_SOURCE}" "${TARGET_DIR}" > ${RSYNC_LOG} || perror "rsync from '${RSYNC_SOURCE}' to '${TARGET_DIR}' failed."
+

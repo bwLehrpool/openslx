@@ -1,0 +1,10 @@
++ /usr/share/autostart/**/
+- /usr/share/autostart/**
++ /usr/share/autostart/kdesktop.desktop
++ /usr/share/autostart/krunner.desktop
++ /usr/share/autostart/plasma.desktop
++ /usr/share/autostart/plasma-desktop.desktop
++ /usr/share/autostart/polkit-kde-authentication-agent-1.desktop
++ /opt/kde3/share/autostart/**/
+- /opt/kde3/share/autostart/**
+

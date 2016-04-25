@@ -1,0 +1,20 @@
+[Notification Messages]
+phonon_always_forget_devices=true
+[Module-colord]
+autoload=false
+[Module-kingston_update_notifier]
+autoload=false
+[Module-powerdevil]
+autoload=false
+[Module-freespacenotifier]
+autoload=false
+[Module-kwrited]
+autoload=false
+[Module-remotedirnotify]
+autoload=false
+[Module-statusnotifierwatcher]
+autoload=false
+[Module-wacomtablet]
+autoload=false
+[Module-nepomuksearchmodule]
+autoload=false

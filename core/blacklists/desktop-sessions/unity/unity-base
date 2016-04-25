@@ -1,0 +1,6 @@
+# files needed to start unity under ubuntu 14.04
++ /etc/xdg/autostart/unity-settings-daemon.desktop
++ /etc/xdg/autostart/unity-fallback-mount-helper.desktop
++ /etc/xdg/autostart/indicator-session.desktop
++ /etc/xdg/autostart/indicator-sound.desktop
++ /etc/xdg/autostart/indicator-datetime.desktop

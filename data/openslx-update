@@ -1,0 +1,214 @@
+#!/bin/bash
+
+### Functions ###################################
+
+function print ()
+{
+	echo -e "\033[01;29m$@\033[00m"
+}
+
+function error ()
+{
+	echo -e "\033[01;31m$@\033[00m"
+	exit 1
+}
+
+function warning ()
+{
+	echo -e "\033[01;33m$@\033[00m"
+}
+
+function download ()
+{
+	[ $# -ne 2 ] && error "Script-Fehler: download <destname> <url> (2 Params, habe $#!)"
+	# Download
+	wget -nv -O "$WWWDIR/$1" "$2" && DLFLAG=1 || { warning "Download von $2 fehlgeschlagen"; return 1; }
+	# Download md5 value
+	wget -nv -O "$WWWTEMP/$1.$CRCEXTENSION" "$2.$CRCEXTENSION" || { warning "Download von $2.$CRCEXTENSION fehlgeschlagen. Kann Dateiintegrität nicht prüfen."; return 0; }
+	# Check file checksums
+	if [ "$($CRCCOMMAND "$WWWDIR/$1" | cut -f 1 -d " ")" != "$(cat "$WWWTEMP/$1.$CRCEXTENSION")" ]; then
+		warning "$CRCCOMMAND: $WWWDIR/$1: Prüfsummendiskrepanz! Übertragungsfehler oder Laufwerk voll."
+		error "Beende Skript aufgrund Prüfsummendiskrepanz!"
+	else
+		print "Prüfsummencheck Datei $1 ok."
+	fi
+	DLFLAG=1
+	return 0
+}
+ 
+### Constants ###################################
+# Web
+MIRROR="http://mltk.boot.openslx.org"
+MIRRORDIR="files2"
+# Files/Dirs
+PXEDIR="/srv/openslx/tftp/pxelinux.cfg"
+PXECONFIG="$PXEDIR/default"
+PXETEMPLATE="/opt/openslx/templates/pxemenu-header"
+FILEPREFIX="openslx-"
+WWWDIR="/srv/openslx/www"
+SCRIPTPATH=$(dirname "$0")
+SCRIPTBACKUPDIR="/root/backup"
+SERVERDEFAULTS="/opt/openslx/server-defaults"
+LOCALINDEX="/opt/openslx/local_version"
+WWWTEMP="/srv/openslx/www-temp"
+CLIENTCONFIG="/opt/openslx/client-config"
+# Other
+SLXSCRIPTS="openslx-install openslx-update"
+NOW=$(date +%Y%m%d)
+# Temporary
+REMOTEINDEX=$(mktemp /tmp/mlversionXXX)
+LOCALINDEX="/opt/openslx/local_version"
+WWWTEMP="/srv/openslx/www-temp"
+# Checksumming
+CRCCOMMAND=md5sum
+CRCEXTENSION=md5
+CRCLEN=32
+# Minimum free disk space
+MINSPACE=409600		# 400MiB
+### Variables ##################################
+DLFLAG=0		# if something was downloaded
+LOCAL_STABLE=0
+LOCAL_TESTING=0
+
+trap "{ rm -f \"$REMOTEINDEX\" \"$WWWTEMP\"/* \"$WWWDIR\"/*.\"$CRCEXTENSION\"; }" SIGINT SIGTERM EXIT
+
+mkdir -p "$WWWTEMP"
+
+# Update Scripts openslx-install and openslx-update, if possible.
+if [ ! -d "$SCRIPTBACKUPDIR" ]; then
+	print "Erzeuge Sicherungsverzeichnis für Skripte $SCRIPTBACKUPDIR"
+	mkdir -p "$SCRIPTBACKUPDIR" || error "Kann Sicherungsverzeichnis für Skripte nicht erstellen!"
+fi
+print "Prüfe auf neue openslx-ng Script-Versionen..."
+SLXCHANGED=no
+for FILE in $SLXSCRIPTS; do
+	if ! wget -nv -O "$WWWTEMP/$FILE.$CRCEXTENSION" "$MIRROR/$MIRRORDIR/$FILE.$CRCEXTENSION"; then
+		warning "Fehler bei Update-Prüfung für $FILE"
+		continue
+	fi
+	CRCVALNEW=$(cat "$WWWTEMP/$FILE.$CRCEXTENSION" | cut -f 1 -d " " | tr '[A-Z]' '[a-z]')
+	CRCVALOLD=$($CRCCOMMAND "$SCRIPTPATH/$FILE" | cut -f 1 -d " " | tr '[A-Z]' '[a-z]')
+	if [ "${#CRCVALNEW}" -ne "$CRCLEN" ]; then
+		warning "Fehler beim herunterladen der Prüfsumme von $FILE - erwartewte Länge $CRCLEN, tatsächliche Länge ${#CRCVALNEW}"
+		continue
+	fi
+	if [ "$CRCVALNEW" == "$CRCVALOLD" ]; then
+		print "$SCRIPTPATH/$FILE  - kein Update notwendig."
+		continue
+	fi
+	wget -nv -O "$WWWTEMP/$FILE" "$MIRROR/$MIRRORDIR/$FILE"
+	if [ "$($CRCCOMMAND "$WWWTEMP/$FILE" | cut -f 1 -d " " | tr '[A-Z]' '[a-z]')" != "$CRCVALNEW" ]; then
+		warning "$SCRIPTPATH/$FILE konnte nicht upgedatet werden ($CRCEXTENSION-Fehler)!"
+		continue
+	fi
+	print "$SCRIPTPATH/$FILE wird upgedatet - $CRCEXTENSION ok."
+	print "Alte Version $SCRIPTPATH/$FILE gesichert nach: $SCRIPTBACKUPDIR/$FILE.$NOW."			
+	mv "$SCRIPTPATH/$FILE" "$SCRIPTBACKUPDIR/$FILE.$NOW"
+	chmod u+x "$WWWTEMP/$FILE"		# wget doesn't set exec :)
+	mv "$WWWTEMP/$FILE" "$SCRIPTPATH"
+	SLXCHANGED=yes
+done
+if [ "$SLXCHANGED" == "yes" ]; then
+	print "OpenSLX-Scripte aktualisiert. Starte neu..."
+	$0 $@
+	RET=$?
+	exit $RET
+fi
+
+# Warn if there's not enough space left...
+if [ "$(df -Pk "$WWWDIR" | tail -1 | tr -s ' ' | cut -d " " -f 4)" -lt "$MINSPACE" ]; then
+	warning "Achtung: Eventuell zu wenig freier Speicherplatz verfügbar."
+fi
+
+
+. "$SERVERDEFAULTS" || error "Konnte Serverkonfiguration nicht laden. Wurde openslx-install ausgeführt?"
+if [ -s "$LOCALINDEX" ]; then
+	. "$LOCALINDEX" || error "Fehler beim laden der lokalen Versionsinfirmationen aus $LOCALINDEX"
+fi
+
+print ""
+print "Lade Liste aktuell verfügbarer Versionen..."
+wget -nv -O "$REMOTEINDEX" "$MIRROR/index2" || error "Konnte Liste verfügbarer Releases nicht herunterladen."
+. "$REMOTEINDEX" || error "Liste verfügbarer Releases Fehlerhaft (konnte $REMOTEINDEX nicht sourcen)"
+
+# Regenerate pxemenu
+[ -d "$PXEDIR" ] || mkdir -p "$PXEDIR"
+cp "$PXETEMPLATE" "$PXECONFIG"
+ERR=$?; [ $ERR -ne 0 ] && error "Kann PXE-Vorlage nicht umkopieren!"
+
+mv "$WWWDIR/$FILEPREFIX"* "$WWWTEMP/"
+
+for REL in ${!AVAILABLE_*}; do
+	BRANCH="${REL#AVAILABLE_}"
+	print "Remote has branch $BRANCH"
+	PXELINE=""
+	KERNEL=""
+	ADDONS=""
+	for FILE in ${!REL}; do
+		# Handle pxelinux.cfg
+		if [[ "$FILE" == kernel* ]]; then
+			KERNEL="KERNEL http://$SLX_LOCAL_ADDR/$FILEPREFIX$FILE"
+		else
+			if [ -z "$PXELINE" ]; then
+				PXELINE="INITRD "
+			else
+				PXELINE+=","
+			fi
+			PXELINE+="http://$SLX_LOCAL_ADDR/$FILEPREFIX$FILE"
+		fi
+		# If file is available locally, don't download again
+		[ -s "$WWWDIR/$FILEPREFIX$FILE" ] && continue
+		if [ -s "$WWWTEMP/$FILEPREFIX$FILE" ]; then
+			mv "$WWWTEMP/$FILEPREFIX$FILE" "$WWWDIR/" && continue
+			warning "Konnte bestehende Datei $WWWTEMP/$FILEPREFIX$FILE nicht nach $WWWDIR/ verschieben, lade erneut herunter..."
+		fi
+		# Download
+		download "$FILEPREFIX$FILE" "$MIRROR/$MIRRORDIR/$FILE"
+	done
+	if [ -z "$PXELINE" -o -z "$KERNEL" ]; then
+		warning "Unvollständiger Eintrag. KERNEL oder INITRD fehlen."
+		continue
+	fi
+	# Append to pxeconfig
+	echo "# Branch $BRANCH" >> "$PXECONFIG"
+	echo "LABEL $BRANCH" >> "$PXECONFIG"
+	echo "    MENU LABEL OpenSLX-NG $BRANCH [${!REL}]" >> "$PXECONFIG"
+	echo "    $KERNEL" >> "$PXECONFIG"
+	echo "    $PXELINE" >> "$PXECONFIG"
+	echo "    IPAPPEND 3" >> "$PXECONFIG"
+	echo "    APPEND slxsrv=$SLX_LOCAL_ADDR slxbase=$BRANCH" >> "$PXECONFIG"
+	# Extra files (e.g. vmplayer in its own sqfs that gets downloaded later)
+	EXTRA="${BRANCH}_EXTRA"
+	mkdir -p "$WWWDIR/$BRANCH"
+	for FILE in ${!EXTRA}; do
+		if [[ "$FILE" == *stage32* ]]; then
+			ln -sf "../$FILEPREFIX$FILE" "$WWWDIR/$BRANCH/stage32.sqfs"
+		else
+			ADDONS+=" $FILE"
+			ln -sf "../$FILEPREFIX$FILE" "$WWWDIR/$BRANCH/$FILE.sqfs"
+		fi
+		# If file is available locally, don't download again
+		[ -s "$WWWDIR/$FILEPREFIX$FILE" ] && continue
+		if [ -s "$WWWTEMP/$FILEPREFIX$FILE" ]; then
+			mv "$WWWTEMP/$FILEPREFIX$FILE" "$WWWDIR/" && continue
+			warning "Konnte bestehende Datei $WWWTEMP/$FILEPREFIX$FILE nicht nach $WWWDIR/ verschieben, lade erneut herunter..."
+		fi
+		# Download
+		download "$FILEPREFIX$FILE" "$MIRROR/$MIRRORDIR/$FILE"
+	done
+	cp "$CLIENTCONFIG" "$WWWDIR/$BRANCH/config"
+	echo "SLX_ADDONS='$ADDONS'" >> "$WWWDIR/BRANCH/config"
+	ln -sf "$CLIENTCONFIG.tgz" "$WWWDIR/$BRANCH/config.tgz"
+done
+
+# If we are here, then we can assume everything went either right, or at least no fatal error happened.
+
+if [ "$DLFLAG" -ne 0 ]; then
+	print "Alles scheint ok."
+else
+	print "Keine neuen Abbilder heruntergeladen."
+fi
+rm -rf "$WWWTEMP"
+
+exit 0
+

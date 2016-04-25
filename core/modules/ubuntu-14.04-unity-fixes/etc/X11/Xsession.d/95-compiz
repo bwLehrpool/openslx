@@ -1,0 +1,4 @@
+#!/bin/ash
+
+touch /tmp/washereagain
+export COMPIZ_CONFIG_PROFILE='ubuntu'

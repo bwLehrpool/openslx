@@ -1,0 +1,30 @@
+This is a Completion Plugin for Oh-My-ZSH. 
+It faciliates the handling of the openslx and mltk command line tools by 
+showing available options, targets, module, hosts and configs on tab press.
+
+#Install
+To use it, just place the folder 'openslx' under "~/.oh-my-zsh/plugins/",
+fire up a new zsh-session, switch to your tm-script directory and the 
+completion should be working.
+
+#Optional
+The following lines can be added to your ~/.zshrc file
+They are not really necessary for the completion to work, but will make 
+the completion functions more verbose.
+-------------------------------------------------------------
+zstyle ':completion:*' verbose yes
+zstyle ':completion:*:descriptions' format '%B%d%b'
+zstyle ':completion:*:messages' format '%d'
+zstyle ':completion:*:warnings' format 'No matches for: %d'
+zstyle ':completion:*' group-name ”
+-------------------------------------------------------------
+
+#Development
+With the following command you can quickly test changes you did to the 
+completion functions without having to reopen a new session every time. 
+For example to reload the completion function for _mltk:
+
+$ unfunction _mltk && autoload -U _mltk
+
+#Futher Information
+http://zsh.sourceforge.net/Doc/Release/Completion-System.html

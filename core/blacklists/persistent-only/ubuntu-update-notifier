@@ -1,0 +1,5 @@
++ /var/lib/ubuntu-release-upgrader/**/
+- /var/lib/ubuntu-release-upgrader/**
++ /var/lib/update-notifier/**/
+- /var/lib/update-notifier/**
+

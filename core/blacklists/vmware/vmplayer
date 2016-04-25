@@ -1,0 +1,4 @@
+# don't use the vmware wrapper script to start the player
+# as it won't work on our system.
+- /usr/bin/vmplayer
+- /usr/bin/vmware

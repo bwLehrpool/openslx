@@ -1,0 +1,70 @@
+# transported from pam/gnome:
++ /etc/pam.d/gdm
++ /etc/pam.d/gdm-*
++ /etc/pam.d/gnome-*
+
+# transported from x-autostart/xdg-autostart:
+# (obsolete entries, left here to match comment in
+# x-autostart/xdg-autostart), now matched in more 'x-autostart stuff'.
+
+# more x-autostart stuff:
++ /etc/xdg/autostart/*gnome*
++ /etc/xdg/autostart/nautilus-autostart.desktop
+
+# files from /etc:
++ /etc/gnome
++ /etc/gnome-app-install
++ /etc/gnome-settings-daemon
+ 
+# files from /usr/bin:
++ /usr/bin/*gnome*
+ 
+# from package gnome-session:
++ /usr/share/gnome-session
++ /usr/share/doc
+ 
+# + from package gnome-session-bin:
++ /usr/share/GConf
++ /usr/share/glib-2.0
++ /usr/lib/*gnome*
+ 
+# Caught freestyle:
++ /usr/share/gnome*
++ /usr/lib/python3/dist-packages/orca/scripts/apps/*gnome*
+ 
+# gnome keyring libs:
++ /usr/lib/x86_64-linux-gnu/*gnome*
++ /usr/lib/x86_64-linux-gnu/pkcs11
++ /usr/lib/x86_64-linux-gnu/gio/modules
++ /usr/lib/x86_64-linux-gnu/libproxy/0.4.11/modules
+
+# gnome seems to need accountdaemon for screensaver login
+# (if not found 30sec timeout)
++ /usr/lib/systemd/
++ /usr/lib/systemd/system/
++ /usr/lib/systemd/system/accounts-daemon.service
+# Suse version:
++ /usr/lib/accounts-daemon
+# Ubuntu version:
++ /usr/lib/accountsservice/accounts-daemon
+
+# sonstiges für accountservice:
++ /etc/dbus-1/system.d/org.freedesktop.Accounts.conf
++ /usr/share/dbus-1/interfaces/org.freedesktop.Accounts.User.xml 
++ /usr/share/dbus-1/interfaces/org.freedesktop.Accounts.xml
++ /usr/share/dbus-1/system-services/org.freedesktop.Accounts.service
++ /usr/share/polkit-1/actions/org.freedesktop.accounts.policy
++ /usr/share/language-tools
+
+
++ /usr/sbin/*gnome*
+ 
++ /usr/lib/libvte-2.90-9/*gnome*
++ /usr/lib/openssh/*gnome*
+ 
++ /usr/share/dbus-1/services/*gnome*
++ /usr/share/locale-langpack/de/LC_MESSAGES/*gnome*
+ 
++ /usr/share/polkit-1/actions/*gnome*
++ /usr/share/polkit-1/rules.d/*gnome*
++ /usr/share/dbus-1/services/*gnome*

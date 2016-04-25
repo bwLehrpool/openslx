@@ -1,0 +1,27 @@
+Some guidelines
+
+-- 1. Leading Tabs, no spaces.
+.vimrc:
+set noexpandtab
+set tabstop=<spaces to display per tab>
+set autoindent
+
+If you want to see leading/trailing spaces:
+highlight ExtraWhitespace ctermbg=red guibg=red
+match ExtraWhitespace /^\t*\zs \+\|\s\+\%#\@<!$/
+
+
+-- 2. ALL_CAPS_VARIABLE_NAMES
+Variable names should be in caps. You can use lowercase
+in for statements, like "for i in $SOME_STUFF; do"
+Some old scripts haven't been updated yet....
+
+
+-- 3. "do", "then" ... on the same line
+for i in x; do
+if  [ xyz ]; then
+
+
+-- 4.
+
+

@@ -1,0 +1,32 @@
+Since this framework is supposed to work on several
+distributions, we cannot rely on a certain shell
+always being available in one specific version.
+Care should be taken which shebang a script uses.
+As the only shell we know for sure will be there
+is the ash that comes with busybox it is advised
+that you write scripts that are compatible to ash
+whenever possible.
+So pretty much all scripts should start with
+#!/bin/ash
+It is guaranteed by the framework that /bin/ash
+will link to mltk's busybox binary.
+
+In case you have a fancy script that uses some bash
+features it is reasonably safe to assume that the
+distribution in use supplies a halfway up to date
+bash version, so if you don't use any bleeding edge
+features you might use
+#!/bin/bash
+for that script. Keep in mind that bash takes a
+little while to start up (even if loaded from ram),
+so don't use it if you don't have to.
+
+You should NEVER USE /bin/sh as the shebang, as the
+results are undefined. /bin/sh links to something
+distribution specific, so just because it works on
+one system doesn't mean it works on another
+(debian/ubuntu's dash is great in breaking bash
+scripts for example).
+We do not modify /bin/sh so we don't accidentally
+break any scripts that come with the distro (stage4).
+

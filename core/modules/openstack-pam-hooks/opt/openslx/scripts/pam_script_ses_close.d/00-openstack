@@ -1,0 +1,9 @@
+# To be sourced by /opt/openslx/scripts/pam_script_ses_close only
+
+# Start the virtualization environment again
+# check if another user is logged in
+if [ -z "$(who |grep '^[^root]')" ]; then
+        systemctl start nova-compute.service &
+        systemctl start libvirt-bin.service &
+        systemctl start neutron-plugin-openvswitch-agent.service &
+fi

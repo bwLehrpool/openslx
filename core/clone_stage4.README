@@ -1,0 +1,37 @@
+Some hints for usage of clone_stage4:
+
+Use clone_stage4 not on the build computer but on the computer which
+provides httpd and nfsd, or, in other words: On the computer which serves
+the boot files. That's the reason why clone_stage4 rejects 'local' as IP.
+
+To use stage4 a nfs export will be necessary.
+
+
+On the build computer (or, in other words, the computer which compiles etc.):
+- build your system to your taste.
+- Then, to provide a standardized bind mount (/export/build) for synchronizing
+  from elsewhere ("server IP") enter:
+  ./mltk remote -n 
+
+Then, on the service computer (the one where's booted from etc, see above)
+
+- sync all of your build (IP is IP of build computer):
+  ./mltk server IP -s
+
+- or, if wanted, sync just some parts, for example:
+  ./mltk server [IP] stage31 -e stage31 -s
+  ./mltk server [IP] stage32 -e stage32 -s
+  ./mltk server 132.230.8.238 vbox -e addons -s
+  (etc.)
+
+Well, then do the cloning work:
+  ./scripts/clone_stage4 [IP] /path/to/your/nfs/share/stage4
+
+To use the stage4 make sure your (base) config file contains a line
+  SLX_STAGE4_NFS=[IP of service computer]:/path/to/your/nfs/share/stage4
+
+
+At least now (20130912) it is necessary to enter
+  systemctl (start, restart, reload) nfs-mount
+
+... then login (or re-login), and the stage4s should be there in all their glory.

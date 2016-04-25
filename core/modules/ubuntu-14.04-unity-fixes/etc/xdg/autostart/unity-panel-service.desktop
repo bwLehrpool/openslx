@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Unity Panel Service
+Exec=/usr/lib/unity/unity-panel-service
+OnlyShowIn=Unity;
+NoDisplay=true
+AutostartCondition=GNOME3 if-session ubuntu

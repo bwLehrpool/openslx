@@ -1,0 +1,5 @@
+# transported to desktop-sessions/gnome
+# + /etc/pam.d/gdm
+# + /etc/pam.d/gdm-*
+# + /etc/pam.d/gnome-*
+

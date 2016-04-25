@@ -1,0 +1,323 @@
+#!/bin/bash
+
+function print ()
+{
+	echo -e "\033[01;29m$@\033[00m"
+}
+
+function error ()
+{
+	echo -e "\033[01;31m$@\033[00m"
+	exit 1
+}
+
+function getinput ()
+{
+	[ $# -ne 2 ] && error "getinput called with wrong parameter count ($@)"
+	CURRENT_VAR="$2"
+	echo -n -e "\033[01;29m$1 [${!CURRENT_VAR}]:\033[00m "
+	read RETVAL
+	[ -z "$RETVAL" ] && RETVAL="${!CURRENT_VAR}"
+}
+
+function accept ()
+{
+	[ -z "$CURRENT_VAR" ] && error "accept called when CURRENT_VAR is empty"
+	eval "$CURRENT_VAR='$RETVAL'"
+	CURRENT_VAR=""
+	break
+}
+
+function deny ()
+{
+	print "Ungültige Eingabe: '$RETVAL'"
+}
+
+function yesno ()
+{
+	while true; do
+		echo -n -e "\033[01;29m$@ [J/n] "
+		read KEYPRESS
+		[ -z "$KEYPRESS" ] && return 0
+		[[ "$KEYPRESS" == J* || "$KEYPRESS" == j* ]] && return 0
+		[[ "$KEYPRESS" == N* || "$KEYPRESS" == n* ]] && return 1
+		print "Bitte mit J oder N antworten"
+	done
+}
+
+function save_defaults ()
+{
+	echo -e "# OpenSLX-NG defaults for this server - saved from a previous run of openslx-install\n# Delete this file if you want to start from scratch" > "$DEFAULTS_FILE"
+        for VARNAME in ${!SLX_*}; do
+                echo "$VARNAME='${!VARNAME}'" >> "$DEFAULTS_FILE"
+        done
+}
+
+function check_password ()
+{
+	[ $# -lt 1 ] && error "No user given to check_password"
+	[ $# -lt 2 ] && error "No password given to check_password"
+	[ ! -r /etc/shadow ] && return 1
+	local correct=$(< /etc/shadow awk -v "user=$1" -F : 'user == $1 {print $2}')
+	local prefix=${correct%"${correct#\$*\$*\$}"}
+	local supplied="$(perl -e "print crypt('$2', '$prefix')")" # el cheapo: do not pass a password containing a single quote ( ' )
+	[ "x$supplied" = "x$correct" ] && return 0
+	return 1
+}
+
+# Load "Factory defaults" first
+FACTORY_DEFAULTS_FILE="/opt/openslx/server-factory-defaults"
+if [ -s "$FACTORY_DEFAULTS_FILE" ]; then
+	. "$FACTORY_DEFAULTS_FILE" || error "Factory defaults konnten nicht geladen werden. ($FACTORY_DEFAULTS_FILE)"
+fi
+# Load presets/previously given replies
+DEFAULTS_FILE="/opt/openslx/server-defaults"
+if [ -s "$DEFAULTS_FILE" ]; then
+	. "$DEFAULTS_FILE" || error "Voreinstellungen aus vorherigem Skriptdurchlauf konnten nicht geladen werden. Bitte die Datei $DEFAULTS_FILE überprüfen und reparieren oder ggf. löschen."
+	print " *** Voreinstellungen aus vorherigem Skiptaufruf ($SLX_LAST_INVOCATION) gefunden"
+	print " *** Diese Einstellungen werden als Standard-Antwort auf alle Fragen"
+	print "     angenommen. Um dieses Setup mit den ursprünglichen Standardantworten"
+	print "     auszuführen, die Datei $DEFAULTS_FILE löschen."
+	print " *** Das Setup kann mit Strg+C abgebrochen werden."
+	print ""
+fi
+
+print "OpenSLX-NG Server Preview: Setup"
+print ""
+print "Zum erfolgreichen Aufsetzen eines OpenSLX-NG Servers müssen"
+print "einige Fragen beantwortet werden."
+print ""
+
+#
+# ---- Ask if the private key of Uni Freiburg should be accepted for root logins
+#
+if [ ! -s "/root/.ssh/authorized_keys" ] || ! grep "openslx-admin@uni-freiburg.de" "/root/.ssh/authorized_keys" > /dev/null; then
+	print ""
+	print "Soll der Private Key der bwLehrpool-Abteilung in Freiburg für root-Logins auf"
+	print "diesem Server zugelassen werden? Dadurch ist es für die Entwickler aus Freiburg"
+	print "möglich, sich ohne Kenntnis des Passworts als root auf diesem Server einzuloggen."
+	if yesno "Dies vereinfacht die Fernwartung, Fehlerdiagnose und -behebung."; then
+		if mkdir -p "/root/.ssh" \
+		&& chmod 0700 "/root/.ssh" \
+		&& echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC667v6bIksFcwE6DMFs65ySfjySSn9V44GoN7qzIOUok/fgOsiotq2HJby/cgQxGVKogVmGUDRUqK3lKSqYnDmEigP3aQdleP1NFx6ex/zhEUoHp4VfqfQncSZT1zYE5IGQ9YNERrsDEI0YOZ5Cr+/I3p0bJAbXZM9dk/1Y6VOyMt1ZHXam5VvC6EJnJQzW9uAS69JSezprRsDYH+3NGd/XV/INkOsPIvkLc8rp5rtcdHrq/7NPNqtTCUdChv5F5lNMMHyXlhaM9FjG/DOZ0teKzh8MMe3oUXg/VibqEPZK4zVBKypATlWdv6zODiMrbi4n/Vm9IMA5i/71NW2GOdH openslx-admin@uni-freiburg.de" >> "/root/.ssh/authorized_keys" \
+		&& chmod 0600 "/root/.ssh/authorized_keys"; then
+			print "Key erfolgreich hinzugefügt"
+		else
+			error "Fehler beim Hinzufügen des Keys!"
+		fi
+	fi
+fi
+
+#
+# ---- Haupt-Adresse (zwecks iPXE) ----
+#
+print ""
+print "Zum Einrichten der iPXE-Funktionalität muss die IP-Adresse des Servers"
+print "festgelegt werden. Alle Clients werden über diese Adresse bedient."
+print "WICHTIG: Sollte sich die Adresse des Servers ändern, muss dieses Setup"
+print "erneut ausgeführt werden."
+print "Erkannte lokale Adressen:"
+
+LOCAL_ADDRS="$(ip a | grep -E -o '^\s*inet\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | grep -E -o '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')"
+echo "$LOCAL_ADDRS"
+
+if [ -z "$SLX_LOCAL_ADDR" ] || [[ $LOCAL_ADDRS != *$SLX_LOCAL_ADDR* ]]; then
+	SLX_LOCAL_ADDR=""
+	for ADDR in $LOCAL_ADDRS; do
+		[[ "$ADDR" == 127.* ]] && continue
+		LAN_IP=$ADDR
+		[[ "$ADDR" == 192.168.* ]] && continue
+		[[ "$ADDR" == 10.* ]] && continue
+		[[ "$ADDR" == 172.* ]] && continue
+		SLX_LOCAL_ADDR=$ADDR
+	done
+	[ -z "$SLX_LOCAL_ADDR" ] && SLX_LOCAL_ADDR=$LAN_IP
+fi
+
+while true; do
+	getinput "Primäre IP-Adresse des Servers" SLX_LOCAL_ADDR
+	# syntax check
+	echo "$RETVAL" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null || continue
+	if ! ip a | grep -E "^\s*inet\s+$RETVAL/" > /dev/null; then
+		print "Dieser Server scheint kein Interface zu besitzen, welches auf"
+		print "die Adresse $RETVAL konfiguriert ist."
+		yesno "Trotzdem diese Adresse verwenden?" || continue
+	fi
+	accept
+done
+
+#
+# ---- NFS Share
+#
+# Is it a local one?
+print ""
+print "Bereitstellung der VMWare-Images"
+print "Die Clients booten die VMWare-Images von einem NFS-Share. Dieses kann"
+print "entweder auf diesem Server oder auf einem externen Server mit NFS-Zugang liegen."
+print "Sofern die Images von diesem Server ausgeliefert werden sollen, wird ein"
+print "zusätzlicher SMB-Server installiert, um das Aufspielen neuer Images"
+print "von einem Windows-PC aus zu erleichtern."
+
+while true; do
+	getinput "Welches Setup ist erwünscht? L = Lokal, E = Extern" SLX_VM_NFS_TYPE
+	# Local Server
+	if [[ "$RETVAL" == L* || "$RETVAL" == l* ]]; then
+		while true; do
+			getinput "Lokaler Speicherort für VM-Images" SLX_VM_PATH
+			if [[ "$RETVAL" != /* ]]; then
+				print "FEHLER: Der Pfad muss absolut sein (mit einem / beginnen)"
+				continue
+			fi
+			mkdir -p "$RETVAL"
+			[ -w "$RETVAL" ] && accept
+			print "FEHLER: Verzeichnis '$RETVAL' nicht beschreibbar."
+		done
+		SLX_VM_NFS="$SLX_LOCAL_ADDR:$SLX_VM_PATH"
+		print "Lokaler VM-NFS-Share erreichbar unter $SLX_VM_NFS"
+		SLX_VM_NFS_TYPE=L
+		break # No accept here as it cannot be nested
+	fi
+	# External Server
+	if [[ "$RETVAL" == E* || "$RETVAL" == e* ]]; then
+		while true; do
+			getinput "Adresse und Pfad des externen NFS-Shares für VM-Images im Format Adresse:Pfad" SLX_VM_NFS
+			echo "$RETVAL" | grep -E '^\S+:\S+$' > /dev/null && accept
+			print "FEHLER: Ungültiges NFS-Share-Format: $RETVAL"
+		done
+		print "Externer VM-NFS-Share erreichbar unter $SLX_VM_NFS"
+		SLX_VM_NFS_TYPE=E
+		break # No accept
+	fi
+	print "Ungültige Auswahl '$RETVAL'"
+done # Done setting up VM NFS Server type
+
+
+getinput "Adresse oder IP des NTP-Servers, mit dem die Zeit synchronisiert werden soll" SLX_NTP_SERVER
+SLX_NTP_SERVER="$RETVAL"
+
+#
+# ---- Safety first: make user change root password if it is still the default ----
+#
+if [ "x$1" != "x--test" ] && check_password "root" "openslx-ng"; then
+	print ""
+	print "Aus Sicherheitsgründen sollte das root-Passwort dieses Servers geändert werden."
+	while check_password "root" "openslx-ng" && yesno "Passwort jetzt ändern?"; do
+		passwd
+	done
+fi
+
+if yesno "Soll die aktuellste stabile Version des MiniLinux nach der Einrichtung automatisch heruntergeladen werden?"; then
+	DOWNLOAD_ML=yes
+else
+	DOWNLOAD_ML=no
+fi
+
+print ""
+print "Beginne Installation"
+
+#
+# ---- Compile iPXE ----
+#
+print ""
+print "Erstelle iPXE Binary..."
+sleep 3
+cd /opt/openslx/ipxe || error "cd /opt/openslx/ipxe failed"
+cat > ipxelinux.ipxe << HEREEND
+#!ipxe
+set use-cached 1
+dhcp net0
+set net0.dhcp/next-server $SLX_LOCAL_ADDR
+set net0.dhcp/filename ipxelinux.0
+imgload pxelinux.0
+boot pxelinux.0
+HEREEND
+cd src || error "cd src failed"
+[ -e "bin/undionly.kkkpxe" ] && unlink "bin/undionly.kkkpxe"
+make bin/undionly.kkkpxe EMBED=../ipxelinux.ipxe,../pxelinux.0
+[ ! -e "bin/undionly.kkkpxe" -o "$(stat -c %s "bin/undionly.kkkpxe")" -lt 80000 ] && error "Error compiling ipxelinux.0"
+cp "bin/undionly.kkkpxe" "/srv/openslx/tftp/ipxelinux.0" || error "Could not write to /srv/openslx/tftp/ipxelinux.0"
+
+#
+#
+#
+if [[ "$SLX_VM_NFS_TYPE" == "L" ]]; then
+	# Write SMB Config
+cat > "/etc/samba/smb.conf" << HEREEND
+[global]
+
+workgroup = WORKGROUP
+server string = OpenSLX-NG Test-Server
+
+wins support = no
+dns proxy = no
+name resolve order = host
+
+log file = /var/log/samba/log.%m
+max log size = 100
+syslog only = no
+syslog = 0
+
+panic action = /usr/share/samba/panic-action %d
+
+security = user
+encrypt passwords = true
+passdb backend = tdbsam
+obey pam restrictions = yes
+
+domain master = no
+
+[images]
+   comment = Directory where all the VMWare Images go
+   writeable = yes
+   locking = no
+   path = $SLX_VM_PATH
+   guest ok = no
+   valid users = vmware
+HEREEND
+	# End SMB Config
+	chown -R vmware "$SLX_VM_PATH"
+	# NFS Config
+	echo "$SLX_VM_PATH	*(ro,async,insecure,no_root_squash,no_subtree_check)" > "/etc/exports"
+	# End NFS Config
+	update-rc.d samba defaults
+	update-rc.d nfs-kernel-server defaults
+	service samba restart
+	service nfs-kernel-server restart
+else # external NFS Server for VM Images is used. Disable NFS + Samba
+	service samba stop
+	service nfs-kernel-server stop
+	for LEVEL in S 0 1 2 3 4 5; do
+		update-rc.d samba disable "$LEVEL"
+		update-rc.d nfs-kernel-server disable "$LEVEL"
+	done
+fi
+print "Dienste konfiguriert."
+
+[ ! -e "/srv/openslx/www/config.tgz" ] && openslx-settings
+
+#
+# ---- Create boottime system config ----
+#
+print ""
+print "Schreibe Bootzeit-Konfiguration für MiniLinux"
+cat > "/opt/openslx/client-config" << HEREEND
+SLX_VM_NFS='$SLX_VM_NFS'
+SLX_HTTP_ADDR='http://$SLX_LOCAL_ADDR'
+SLX_NTP_SERVER='$SLX_NTP_SERVER'
+SLX_BIOS_CLOCK='local'
+HEREEND
+
+SLX_LAST_INVOCATION="$(date)"
+save_defaults
+
+if [[ "$DOWNLOAD_ML" == yes ]]; then
+	print ""
+	print "Lade aktuellste Version des MiniLinux herunter"
+	openslx-update
+fi
+print ""
+print "Das MiniLinux kann jederzeit manuell durch den Befehl openslx-update aktualisiert werden."
+
+print ""
+print "Einrichtung abgeschlossen."
+

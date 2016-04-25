@@ -1,0 +1,15 @@
+This directory contains blacklists of files and directories that
+should be excluded when cloning stage4 of a remote system. The
+blacklists are split into groups, represented by sub-directories.
+They contain one or more text files representing blacklists in rsync
+"--exclude-from" format.
+
+There is a group called "essential", containg blacklists for essential
+files and dirs that you always want to exclude from being cloned.
+Other directories are create for specific software packages, like
+gnome, or kde.
+
+For inclusion of desktop environments like Gnome or KDE a substructure
+(subdirectory) called desktop-sessions was introduced. The files /
+directories in there should describe only includes ("+ ....") to provide
+files needed for a desktop environment.
